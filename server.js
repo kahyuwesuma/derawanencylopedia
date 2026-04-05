@@ -25,6 +25,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 /* ─── CONFIG ──────────────────────────────────────────── */
+const IS_VERCEL = process.env.VERCEL === '1';
+const STATIC_JSON_PATH = path.resolve(__dirname, 'public/gallery.json');
 const ASSETS_ROOT = path.resolve(__dirname, 'assets/api');
 const SUPPORTED_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.avi']);
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.avi']);
@@ -192,10 +194,23 @@ function scanAssets() {
 
 /* ─── CACHE MANAGEMENT ────────────────────────────────── */
 function getGallery() {
+  // 👉 VERCEL MODE: read static JSON
+  if (IS_VERCEL) {
+    try {
+      const raw = fs.readFileSync(STATIC_JSON_PATH, 'utf-8');
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error('[gallery] failed to read gallery.json', err);
+      return [];
+    }
+  }
+
+  // 👉 LOCAL MODE: dynamic scan
   const now = Date.now();
   if (galleryCache && (now - cacheTime) < CACHE_TTL) return galleryCache;
+
   galleryCache = scanAssets();
-  cacheTime = now;
+  cacheTime    = now;
   return galleryCache;
 }
 
@@ -205,7 +220,7 @@ function invalidateCache() {
 }
 
 /* ─── CHOKIDAR FILE WATCHER ──────────────────────────── */
-if (fs.existsSync(ASSETS_ROOT)) {
+if (!IS_VERCEL && fs.existsSync(ASSETS_ROOT)) {
   const watcher = chokidar.watch(ASSETS_ROOT, {
     ignored: /(^|[\/\\])\../,
     persistent: true,
@@ -224,7 +239,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static assets (images/videos)
-app.use('/assets', express.static(path.join(__dirname, 'assets/api'), {
+app.use('/assets', express.static(path.join(__dirname, 'public/assets'), {
   maxAge: '1h',
   etag: true,
 }));
