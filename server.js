@@ -245,7 +245,11 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets'), {
 }));
 
 // Serve the HTML gallery page
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'));
+});
 
 /* ─── ROUTES ──────────────────────────────────────────── */
 
@@ -321,6 +325,7 @@ app.post('/api/gallery/refresh', (req, res) => {
 });
 
 /* ─── START ──────────────────────────────────────────── */
+
 app.listen(PORT, () => {
   console.log(`\n  ┌─────────────────────────────────────────┐`);
   console.log(`  │  DERAWAN GALLERY API                    │`);
